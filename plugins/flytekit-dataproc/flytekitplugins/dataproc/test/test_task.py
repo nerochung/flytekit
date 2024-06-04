@@ -1,11 +1,10 @@
 from flytekitplugins.dataproc import DataprocConfig, DataprocTask
 from flytekit import kwtypes
-import pandas as pd
 
 project = "wpna-poc-00001"
 location = "us-central1"
 dataprocTask = DataprocTask(
-    name=f"bigquery.doge_coin",
+    name=f"hello_dataproc",
     inputs=kwtypes(version=int),
     task_config=DataprocConfig(
         ProjectID=project,
