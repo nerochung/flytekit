@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import dataproc_v1
 from google.cloud.dataproc_v1.types import Batch
 
@@ -12,6 +12,7 @@ from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
