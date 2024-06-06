@@ -1,5 +1,6 @@
 import datetime
 import re
+import uuid
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -50,6 +51,9 @@ class DataprocAgent(AsyncAgentBase):
         project = custom["ProjectID"]
         location = custom["Location"]
         main_python_file_uri = custom["MainPythonFileUri"]
+        batch_id = str(uuid.uuid4())
+        batch_name = f"projects/{project}/locations/{location}/batches/{batch_id}"
+
         spark_history_dataproc_cluster = custom["SparkHistoryDataprocCluster"]
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
@@ -58,35 +62,19 @@ class DataprocAgent(AsyncAgentBase):
 
         # Initialize request argument(s)
         batch = dataproc_v1.Batch()
+        batch.name = batch_name
         batch.pyspark_batch.main_python_file_uri = main_python_file_uri
         batch.environment_config.peripherals_config.spark_history_server_config.dataproc_cluster = spark_history_dataproc_cluster
 
+        
         request = dataproc_v1.CreateBatchRequest(
-            parent=f"projects/{project}/locations/{location}",
-            batch=batch,
+            batch_id = batch_id,
+            parent = f"projects/{project}/locations/{location}",
+            batch = batch,
         )
 
         # Make the request
         operation = client.create_batch(request=request)
-        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " Waiting for operation to complete...")
-
-        batch_name = None
-        try: 
-            response = operation.result()
-            batch_name = response.name
-            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " response: " + str(response))
-        except Exception as e:
-            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " Exception : -----------")
-            # logger.error("failed to run Dataproc job with error:", e.message)
-            # print("failed to run Dataproc job with error:", e.message)
-            match = re.search(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', e.message)
-            if match:
-                uuid = match.group(0)
-                print(f"Extracted UUID: {uuid}")
-            else:
-                print("UUID not found in the error message.")
-            batch_name = f"projects/{project}/locations/{location}/batches/{uuid}"
-
         return DataprocMetadata(batch_name=batch_name, location=location, project=project)
 
     def get(self, resource_meta: DataprocMetadata, **kwargs) -> Resource:
