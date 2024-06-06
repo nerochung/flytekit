@@ -32,9 +32,19 @@ class DataprocAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> DataprocMetadata:
-        print("create() ")
+        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " create() ")
         print(f"task_template: {task_template}")
         print(f"inputs: {inputs}")
+        
+        if inputs:
+            ctx = FlyteContextManager.current_context()
+            print(f"ctx: {ctx}")
+            python_interface_inputs = {
+                name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
+            }
+            print(f"python_interface_inputs: {python_interface_inputs}")
+            native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
+            print(f"native_inputs: {native_inputs}")
             
         custom = task_template.custom
         project = custom["ProjectID"]
@@ -58,15 +68,15 @@ class DataprocAgent(AsyncAgentBase):
 
         # Make the request
         operation = client.create_batch(request=request)
-        print("Waiting for operation to complete...")
+        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " Waiting for operation to complete...")
 
         batch_name = None
         try: 
             response = operation.result()
             batch_name = response.name
-            print(response)
+            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " response: " + str(response))
         except Exception as e:
-            # print("Exception : -----------")
+            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " Exception : -----------")
             # logger.error("failed to run Dataproc job with error:", e.message)
             # print("failed to run Dataproc job with error:", e.message)
             match = re.search(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', e.message)
@@ -80,7 +90,7 @@ class DataprocAgent(AsyncAgentBase):
         return DataprocMetadata(batch_name=batch_name, location=location, project=project)
 
     def get(self, resource_meta: DataprocMetadata, **kwargs) -> Resource:
-        print("get()") 
+        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " get()")
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
             "api_endpoint": f"{resource_meta.location}-dataproc.googleapis.com:443"
@@ -122,7 +132,7 @@ class DataprocAgent(AsyncAgentBase):
         return Resource(phase=cur_phase, message=msg, log_links=[log_link], outputs=res)
 
     def delete(self, resource_meta: DataprocMetadata, **kwargs):
-        print("delete()")
+        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " delete()")
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
             "api_endpoint": f"{resource_meta.location}-dataproc.googleapis.com:443"
