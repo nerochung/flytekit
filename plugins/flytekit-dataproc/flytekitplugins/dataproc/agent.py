@@ -33,6 +33,7 @@ class DataprocAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> DataprocMetadata:
+        logger.debug("Create()")
         print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " create() ")
         print(f"task_template: {task_template}")
         print(f"inputs: {inputs}")
@@ -78,6 +79,7 @@ class DataprocAgent(AsyncAgentBase):
         return DataprocMetadata(batch_name=batch_name, location=location, project=project)
 
     def get(self, resource_meta: DataprocMetadata, **kwargs) -> Resource:
+        logger.debug("get()")
         print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " get()")
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
@@ -87,37 +89,45 @@ class DataprocAgent(AsyncAgentBase):
         request = dataproc_v1.GetBatchRequest(
             name=resource_meta.batch_name,
         )
-        print(f"request: {request}") 
+        # print(f"request: {request}") 
         # Make the request
         response = client.get_batch(request=request)
         print(f"response: {response}") 
         log_link = TaskLog(
-            uri="https://console.cloud.google.com",
-            name="BigQuery Console",
+            uri=response.runtime_info.endpoints["Spark History Server"],
+            name="Spark History Server",
         )
 
         cur_phase = TaskExecution.RUNNING
         res = None
         msg = None
 
-        if response.state == Batch.State.STATE_UNSPECIFIED:
+        if response.state == Batch.State.STATE_UNSPECIFIED.value:
             cur_phase = TaskExecution.UNDEFINED
-        elif response.state == Batch.State.SUCCEEDED:
+            msg = "STATE_UNSPECIFIED"
+        elif response.state == Batch.State.SUCCEEDED.value:
             cur_phase = TaskExecution.SUCCEEDED
-        elif response.state == Batch.State.PENDING:
+            msg = "SUCCEEDED"
+        elif response.state == Batch.State.PENDING.value:
             cur_phase = TaskExecution.INITIALIZING
-        elif response.state == Batch.State.RUNNING:
+            msg = "PENDING"
+        elif response.state == Batch.State.RUNNING.value:
             cur_phase = TaskExecution.RUNNING
-        elif response.state == Batch.State.CANCELLING:
+            msg = "RUNNING"
+        elif response.state == Batch.State.CANCELLING.value:
             cur_phase = TaskExecution.RUNNING
-        elif response.state == Batch.State.CANCELLED:
+            msg = "CANCELLING"
+        elif response.state == Batch.State.CANCELLED.value:
             cur_phase = TaskExecution.ABORTED
-        elif response.state == Batch.State.FAILED:
+            msg = "CANCELLED"
+        elif response.state == Batch.State.FAILED.value:
             cur_phase = TaskExecution.FAILED
-            msg = response.state_message
+            msg = "FAILED"
+            #msg = response.state_message
             
         print(f"cur_phase: {cur_phase}, response.state: {response.state}")
-        return Resource(phase=cur_phase, message=msg, log_links=[log_link], outputs=res)
+        # return Resource(phase=cur_phase, message=msg, log_links=[TaskLog(name="console", uri="https://console.cloud.google.com")])
+        return Resource(phase=cur_phase, message=msg, log_links=[log_link])
 
     def delete(self, resource_meta: DataprocMetadata, **kwargs):
         print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " delete()")
