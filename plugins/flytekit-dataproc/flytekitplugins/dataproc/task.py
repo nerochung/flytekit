@@ -25,7 +25,8 @@ class DataprocConfig(object):
     ProjectID: str
     Location: str
     MainPythonFileUri: str
-    SparkHistoryDataprocCluster: str
+    SparkHistoryDataprocCluster: str = None
+    ContainerImage: str = None
 
 
 class DataprocTask(AsyncAgentExecutorMixin, PythonTask[DataprocConfig]):
@@ -58,6 +59,7 @@ class DataprocTask(AsyncAgentExecutorMixin, PythonTask[DataprocConfig]):
             "ProjectID": self.task_config.ProjectID,
             "MainPythonFileUri": self.task_config.MainPythonFileUri,
             "SparkHistoryDataprocCluster": self.task_config.SparkHistoryDataprocCluster,
+            "ContainerImage": self.task_config.ContainerImage,
         }
         s = Struct()
         s.update(config)

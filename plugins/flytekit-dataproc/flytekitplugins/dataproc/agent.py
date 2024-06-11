@@ -2,7 +2,7 @@ import datetime
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, MutableSequence
 
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from google.cloud import dataproc_v1
@@ -33,20 +33,23 @@ class DataprocAgent(AsyncAgentBase):
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> DataprocMetadata:
-        logger.debug("Create()")
-        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " create() ")
-        print(f"task_template: {task_template}")
-        print(f"inputs: {inputs}")
+        logger.info("Create()")
+        logger.debug(f"task_template: {task_template}")
+        logger.debug(f"inputs: {inputs}")
         
+        args = []
         if inputs:
             ctx = FlyteContextManager.current_context()
-            print(f"ctx: {ctx}")
             python_interface_inputs = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
             }
-            print(f"python_interface_inputs: {python_interface_inputs}")
+            logger.debug(f"python_interface_inputs: {python_interface_inputs}")
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-            print(f"native_inputs: {native_inputs}")
+            logger.debug(f"native_inputs: {native_inputs}")
+            for key, value in native_inputs.items():
+                args.extend([f"--{key}", str(value)])
+            # args = [(f"--{key}", value) for key, value in native_inputs.items()]
+            logger.debug(f"args(): {args}")
             
         custom = task_template.custom
         project = custom["ProjectID"]
@@ -56,6 +59,7 @@ class DataprocAgent(AsyncAgentBase):
         batch_name = f"projects/{project}/locations/{location}/batches/{batch_id}"
 
         spark_history_dataproc_cluster = custom["SparkHistoryDataprocCluster"]
+        container_image = custom["ContainerImage"]
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
             "api_endpoint": f"{location}-dataproc.googleapis.com:443"
@@ -65,8 +69,9 @@ class DataprocAgent(AsyncAgentBase):
         batch = dataproc_v1.Batch()
         batch.name = batch_name
         batch.pyspark_batch.main_python_file_uri = main_python_file_uri
+        batch.pyspark_batch.args = args
         batch.environment_config.peripherals_config.spark_history_server_config.dataproc_cluster = spark_history_dataproc_cluster
-
+        batch.runtime_config.container_image = container_image
         
         request = dataproc_v1.CreateBatchRequest(
             batch_id = batch_id,
@@ -79,8 +84,7 @@ class DataprocAgent(AsyncAgentBase):
         return DataprocMetadata(batch_name=batch_name, location=location, project=project)
 
     def get(self, resource_meta: DataprocMetadata, **kwargs) -> Resource:
-        logger.debug("get()")
-        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " get()")
+        logger.info("get()")
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
             "api_endpoint": f"{resource_meta.location}-dataproc.googleapis.com:443"
@@ -92,7 +96,7 @@ class DataprocAgent(AsyncAgentBase):
         # print(f"request: {request}") 
         # Make the request
         response = client.get_batch(request=request)
-        print(f"response: {response}") 
+        logger.debug(f"response: {response}") 
         log_link = TaskLog(
             uri=response.runtime_info.endpoints["Spark History Server"],
             name="Spark History Server",
@@ -101,7 +105,7 @@ class DataprocAgent(AsyncAgentBase):
         cur_phase = TaskExecution.RUNNING
         res = None
         msg = None
-
+        
         if response.state == Batch.State.STATE_UNSPECIFIED.value:
             cur_phase = TaskExecution.UNDEFINED
             msg = "STATE_UNSPECIFIED"
@@ -124,13 +128,12 @@ class DataprocAgent(AsyncAgentBase):
             cur_phase = TaskExecution.FAILED
             msg = "FAILED"
             #msg = response.state_message
-            
-        print(f"cur_phase: {cur_phase}, response.state: {response.state}")
-        # return Resource(phase=cur_phase, message=msg, log_links=[TaskLog(name="console", uri="https://console.cloud.google.com")])
+        # logger.info(f"cur_phase: {TaskExecution.Phase(cur_phase).name}, response.state: {Batch.State(response.state).name}")
+        logger.info(f"cur_phase: {cur_phase}, response.state: {Batch.State(response.state).name}")
         return Resource(phase=cur_phase, message=msg, log_links=[log_link])
 
     def delete(self, resource_meta: DataprocMetadata, **kwargs):
-        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f") + " delete()")
+        logger.info("delete()")
         # Create a client
         client = dataproc_v1.BatchControllerClient(client_options={
             "api_endpoint": f"{resource_meta.location}-dataproc.googleapis.com:443"
