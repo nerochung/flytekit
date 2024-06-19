@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, MutableMapping, MutableSequence
 
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
@@ -13,9 +13,6 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 # from flytekit.models import task as _task_model
 # from flytekit.types.structured import StructuredDataset
 
-# Dataproc = lazy_module("google.cloud.bigquery")
-
-
 @dataclass
 class DataprocConfig(object):
     """
@@ -27,7 +24,14 @@ class DataprocConfig(object):
     MainPythonFileUri: str
     SparkHistoryDataprocCluster: str = None
     ContainerImage: str = None
-
+    RuntimeConfigVersion: str = None
+    RuntimeConfigProperties: MutableMapping[str, str] = None
+    ServiceAccount: str = None
+    NetworkTags: MutableSequence[str] = None
+    KmsKey: str = None
+    NetworkUri: str = None
+    SubnetworkURI: str = None
+    
 
 class DataprocTask(AsyncAgentExecutorMixin, PythonTask[DataprocConfig]):
     """
@@ -60,6 +64,13 @@ class DataprocTask(AsyncAgentExecutorMixin, PythonTask[DataprocConfig]):
             "MainPythonFileUri": self.task_config.MainPythonFileUri,
             "SparkHistoryDataprocCluster": self.task_config.SparkHistoryDataprocCluster,
             "ContainerImage": self.task_config.ContainerImage,
+            "RuntimeConfigVersion": self.task_config.RuntimeConfigVersion,
+            "RuntimeConfigProperties": self.task_config.RuntimeConfigProperties,
+            "ServiceAccount": self.task_config.ServiceAccount,
+            "NetworkTags": self.task_config.NetworkTags,
+            "KmsKey": self.task_config.KmsKey,
+            "NetworkUri": self.task_config.NetworkUri,
+            "SubnetworkUri": self.task_config.SubnetworkURI,
         }
         s = Struct()
         s.update(config)

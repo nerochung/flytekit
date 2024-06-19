@@ -1,12 +1,18 @@
 FROM python:3.10-slim-bookworm
 
 RUN apt-get update && apt-get install build-essential git -y
-RUN pip install prometheus-client grpcio-health-checking google-cloud-dataproc
+RUN pip install prometheus-client grpcio-health-checking #pandas
+RUN pip install google-cloud-dataproc 
 RUN pip install --no-cache-dir -U flytekit \
-    git+https://github.com/nerochung/flytekit.git#subdirectory=plugins/flytekit-dataproc \
+    #flytekitplugins-bigquery \
+    ###git+https://github.com/nerochung/flytekit.git#subdirectory=plugins/flytekit-dataproc \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
     && :
 
-CMD pyflyte serve agent --port 8000
+ENV FLYTE_SDK_LOGGING_LEVEL 10
+WORKDIR /app
+COPY plugins/flytekit-dataproc  .
+COPY Dockerfile.dataproc .
+RUN pip install -e .
