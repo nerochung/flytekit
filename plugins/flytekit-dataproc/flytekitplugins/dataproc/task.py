@@ -30,7 +30,7 @@ class DataprocConfig(object):
     NetworkTags: MutableSequence[str] = None
     KmsKey: str = None
     NetworkUri: str = None
-    SubnetworkURI: str = None
+    SubnetworkUri: str = None
     
 
 class DataprocTask(AsyncAgentExecutorMixin, PythonTask[DataprocConfig]):
@@ -70,7 +70,7 @@ class DataprocTask(AsyncAgentExecutorMixin, PythonTask[DataprocConfig]):
             "NetworkTags": self.task_config.NetworkTags,
             "KmsKey": self.task_config.KmsKey,
             "NetworkUri": self.task_config.NetworkUri,
-            "SubnetworkUri": self.task_config.SubnetworkURI,
+            "SubnetworkUri": self.task_config.SubnetworkUri,
         }
         s = Struct()
         s.update(config)
